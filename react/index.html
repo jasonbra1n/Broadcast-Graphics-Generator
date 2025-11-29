@@ -1,0 +1,426 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Tv, Download, Image, Grid, Check } from 'lucide-react';
+
+const App = () => {
+// State
+const [template, setTemplate] = useState('lowerThird'); // lowerThird, bug, ticker, slate
+const [text1, setText1] = useState('John Doe');
+const [text2, setText2] = useState('CEO, Tech Innovations');
+const [primaryColor, setPrimaryColor] = useState('#2563EB'); // Blue-600
+const [secondaryColor, setSecondaryColor] = useState('#1F2937'); // Gray-800
+const [textColor, setTextColor] = useState('#FFFFFF');
+const [fontFamily, setFontFamily] = useState('Inter');
+
+// Positioning (Percentage based 0-100)
+const [posX, setPosX] = useState(10);
+const [posY, setPosY] = useState(80);
+const [scale, setScale] = useState(100);
+
+// Preview State
+const [showPreviewBg, setShowPreviewBg] = useState(true);
+
+// Icon Mapping
+const Icon = ({ name, size = 20, className }) => {
+const icons = {
+tv: Tv,
+download: Download,
+image: Image,
+grid: Grid,
+check: Check
+};
+const LucideIcon = icons[name];
+return LucideIcon ?
+<LucideIcon size={size} className={className} /> : null;
+};
+
+// Reset defaults when template changes
+const handleTemplateChange = (newTemplate) => {
+setTemplate(newTemplate);
+if (newTemplate === 'lowerThird') {
+setPosX(10); setPosY(80); setScale(100);
+setText1('Interview Subject'); setText2('Job Title / Location');
+} else if (newTemplate === 'bug') {
+setPosX(90); setPosY(5); setScale(80);
+setText1('LIVE'); setText2('');
+} else if (newTemplate === 'ticker') {
+setPosX(0); setPosY(90); setScale(100);
+setText1('BREAKING NEWS'); setText2('This is a scrolling ticker tape example for your broadcast...');
+} else if (newTemplate === 'slate') {
+setPosX(50); setPosY(50); setScale(120);
+setText1('UP NEXT'); setText2('Keynote Speech: Future of Media');
+}
+};
+
+// Download Handler
+const handleDownload = () => {
+const canvas = document.createElement('canvas');
+canvas.width = 1920;
+canvas.height = 1080;
+const ctx = canvas.getContext('2d');
+
+// 1. Clear Canvas (Transparent)
+ctx.clearRect(0, 0, 1920, 1080);
+
+// 2. Draw Graphics based on Template
+// Helper to convert % to pixels
+const x = (posX / 100) * 1920;
+const y = (posY / 100) * 1080;
+const s = scale / 100;
+
+ctx.save();
+
+if (template === 'lowerThird') {
+drawLowerThird(ctx, x, y, s);
+} else if (template === 'bug') {
+drawBug(ctx, x, y, s);
+} else if (template === 'ticker') {
+drawTicker(ctx, x, y, s);
+} else if (template === 'slate') {
+drawSlate(ctx, x, y, s);
+}
+
+ctx.restore();
+
+// 3. Trigger Download
+const link = document.createElement('a');
+link.download = `ATEM_${template}_${Date.now()}.png`;
+link.href = canvas.toDataURL('image/png');
+link.click();
+};
+
+// Drawing Functions (Replicating the visual design to canvas)
+const drawLowerThird = (ctx, x, y, s) => {
+ctx.font = `bold ${60 * s}px ${fontFamily}`;
+const text1Metrics = ctx.measureText(text1);
+const w1 = text1Metrics.width + (60 * s);
+
+ctx.font = `${40 * s}px ${fontFamily}`;
+const text2Metrics = ctx.measureText(text2);
+const w2 = Math.max(w1, text2Metrics.width + (60 * s));
+
+// Background Bar 1 (Name)
+ctx.fillStyle = primaryColor;
+ctx.fillRect(x, y, w1, 80 * s);
+
+// Background Bar 2 (Title - Offset slightly)
+ctx.fillStyle = secondaryColor;
+ctx.fillRect(x, y + (80 * s), w2, 60 * s);
+
+// Text 1
+ctx.fillStyle = textColor;
+ctx.font = `bold ${60 * s}px ${fontFamily}`;
+ctx.textBaseline = 'middle';
+ctx.fillText(text1, x + (30 * s), y + (40 * s));
+
+// Text 2
+ctx.font = `${40 * s}px ${fontFamily}`;
+ctx.fillStyle = '#e5e7eb'; // Slightly dimmer white
+ctx.fillText(text2, x + (30 * s), y + (80 * s) + (30 * s));
+
+// Accent Line
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(x, y, 10 * s, 140 * s);
+};
+
+const drawBug = (ctx, x, y, s) => {
+ctx.fillStyle = primaryColor;
+ctx.beginPath();
+// roundRect is not supported in all canvas contexts in older browsers, fallback to rect or custom round rect if needed
+// Using simple rect with check for roundRect support
+if (ctx.roundRect) {
+ctx.roundRect(x - (100 * s), y, 200 * s, 80 * s, 10 * s);
+} else {
+ctx.rect(x - (100 * s), y, 200 * s, 80 * s);
+}
+ctx.fill();
+
+ctx.fillStyle = textColor;
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.font = `bold ${40 * s}px ${fontFamily}`;
+ctx.fillText(text1, x, y + (40 * s));
+};
+
+const drawTicker = (ctx, x, y, s) => {
+ctx.fillStyle = secondaryColor;
+ctx.fillRect(0, y, 1920, 120 * s);
+
+ctx.fillStyle = primaryColor;
+ctx.fillRect(100, y - (20 * s), 400 * s, 140 * s);
+
+ctx.fillStyle = textColor;
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.font = `bold ${50 * s}px ${fontFamily}`;
+ctx.fillText(text1, 100 + (200 * s), y + (60 * s));
+
+ctx.textAlign = 'left';
+ctx.font = `${40 * s}px ${fontFamily}`;
+ctx.fillText(text2, 600 * s, y + (60 * s));
+};
+
+const drawSlate = (ctx, x, y, s) => {
+ctx.textAlign = 'center';
+
+ctx.fillStyle = 'rgba(0,0,0,0.8)';
+ctx.fillRect(0, 0, 1920, 1080);
+
+ctx.fillStyle = primaryColor;
+ctx.fillRect(x - (300*s), y - (100*s), 600*s, 10*s);
+
+ctx.fillStyle = textColor;
+ctx.font = `900 ${100 * s}px ${fontFamily}`;
+ctx.fillText(text1, x, y);
+
+ctx.font = `${50 * s}px ${fontFamily}`;
+ctx.fillStyle = '#cccccc';
+ctx.fillText(text2, x, y + (100 * s));
+};
+
+
+return (
+<div className="flex flex-col h-screen md:flex-row overflow-hidden bg-neutral-900 text-white font-sans">
+    <style>
+        {
+            ` @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Roboto:wght@400;700&family=Oswald:wght@500;700&display=swap');
+
+            /* Checkboard pattern for transparency */
+            .transparency-grid {
+                background-color: #262626;
+                background-image: linear-gradient(45deg, #333 25%, transparent 25%),
+                    linear-gradient(-45deg, #333 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, #333 75%),
+                    linear-gradient(-45deg, transparent 75%, #333 75%);
+                background-size: 20px 20px;
+                background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            }
+
+            .canvas-container {
+                aspect-ratio: 16 / 9;
+                width: 100%;
+                max-width: 800px;
+                position: relative;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+                border: 1px solid #444;
+            }
+
+            `
+        }
+    </style>
+
+    {/* Sidebar Controls */}
+    <div
+        className="w-full md:w-80 bg-gray-900 border-r border-gray-800 p-6 flex flex-col gap-6 overflow-y-auto z-10 shadow-xl">
+        <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                <Icon name="tv" className="text-white" size={20} />
+            </div>
+            <h1 className="font-bold text-xl tracking-tight">ATEM Graphics</h1>
+        </div>
+
+        {/* Template Select */}
+        <div className="space-y-2">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Template</label>
+            <div className="grid grid-cols-2 gap-2">
+                {['lowerThird', 'bug', 'ticker', 'slate'].map(t => (
+                <button key={t} onClick={()=> handleTemplateChange(t)}
+                    className={`p-2 text-sm rounded border text-left transition-colors ${template === t ? 'bg-blue-600
+                    border-blue-500 text-white' : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700'}`}
+                    >
+                    {t.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                </button>
+                ))}
+            </div>
+        </div>
+
+        {/* Text Controls */}
+        <div className="space-y-3">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Content</label>
+            <input type="text" value={text1} onChange={(e)=> setText1(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm focus:border-blue-500 outline-none
+            transition-colors"
+            placeholder="Line 1"
+            />
+            {template !== 'bug' && (
+            <input type="text" value={text2} onChange={(e)=> setText2(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm focus:border-blue-500 outline-none
+            transition-colors"
+            placeholder="Line 2"
+            />
+            )}
+        </div>
+
+        {/* Styling Controls */}
+        <div className="space-y-3">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Style</label>
+
+            <div className="flex gap-2 items-center">
+                <input type="color" value={primaryColor} onChange={e=> setPrimaryColor(e.target.value)} className="w-8
+                h-8 rounded bg-transparent cursor-pointer border-0" />
+                <span className="text-xs text-gray-400">Primary</span>
+            </div>
+            <div className="flex gap-2 items-center">
+                <input type="color" value={secondaryColor} onChange={e=> setSecondaryColor(e.target.value)}
+                className="w-8 h-8 rounded bg-transparent cursor-pointer border-0" />
+                <span className="text-xs text-gray-400">Secondary</span>
+            </div>
+
+            <select value={fontFamily} onChange={(e)=> setFontFamily(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-sm outline-none"
+                >
+                <option value="Inter">Sans-Serif (Inter)</option>
+                <option value="Roboto">Modern (Roboto)</option>
+                <option value="Oswald">Condensed (Oswald)</option>
+                <option value="serif">Serif (Standard)</option>
+            </select>
+        </div>
+
+        {/* Position Controls */}
+        <div className="space-y-3">
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Layout</label>
+
+            <div className="space-y-1">
+                <div className="flex justify-between text-xs text-gray-400"><span>Horizontal</span><span>{posX}%</span>
+                </div>
+                <input type="range" min="0" max="100" value={posX} onChange={e=> setPosX(Number(e.target.value))}
+                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+            </div>
+            <div className="space-y-1">
+                <div className="flex justify-between text-xs text-gray-400"><span>Vertical</span><span>{posY}%</span>
+                </div>
+                <input type="range" min="0" max="100" value={posY} onChange={e=> setPosY(Number(e.target.value))}
+                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+            </div>
+            <div className="space-y-1">
+                <div className="flex justify-between text-xs text-gray-400"><span>Scale</span><span>{scale}%</span>
+                </div>
+                <input type="range" min="50" max="200" value={scale} onChange={e=> setScale(Number(e.target.value))}
+                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+            </div>
+        </div>
+
+        <div className="mt-auto pt-6 border-t border-gray-800">
+            <button onClick={handleDownload}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 px-4 rounded shadow-lg flex items-center justify-center gap-2 transform transition hover:scale-[1.02] active:scale-[0.98]">
+                <Icon name="download" size={18} />
+                Download PNG
+            </button>
+            <p className="text-[10px] text-gray-500 text-center mt-2">
+                Saves 1920x1080 PNG with Alpha Channel. <br />Drag into ATEM Media Pool.
+            </p>
+        </div>
+    </div>
+
+    {/* Main Workspace */}
+    <div className="flex-1 bg-neutral-900 p-8 flex flex-col items-center justify-center relative">
+
+        {/* Toolbar */}
+        <div className="absolute top-4 right-4 flex gap-2 bg-gray-800 p-1 rounded-lg border border-gray-700 z-20">
+            <button onClick={()=> setShowPreviewBg(!showPreviewBg)}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1
+                ${showPreviewBg ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                <Icon name="image" size={14} /> Video Preview
+            </button>
+            <button onClick={()=> setShowPreviewBg(false)}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1
+                ${!showPreviewBg ? 'bg-gray-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                >
+                <Icon name="grid" size={14} /> Transparency
+            </button>
+        </div>
+
+        {/* Canvas Wrapper */}
+        <div className={`canvas-container rounded-lg ${!showPreviewBg ? 'transparency-grid' : 'bg-black' }`}>
+
+            {/* 1. Preview Background Image (Simulating Video) */}
+            {showPreviewBg && (
+            <img src="https://images.unsplash.com/photo-1559136555-9303baea8ebd?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80"
+                className="absolute inset-0 w-full h-full object-cover opacity-60 pointer-events-none"
+                alt="Video Preview" />
+            )}
+
+            {/* 2. The Actual Graphic Render (HTML/DOM Version for Preview) */}
+            <div className="absolute inset-0 w-full h-full pointer-events-none font-smoothing-antialiased" style={{
+                fontFamily: fontFamily }}>
+
+                {template === 'lowerThird' && (
+                <div className="absolute transition-all duration-200 ease-out" style={{ left: `${posX}%`, top:
+                    `${posY}%`, transform: `scale(${scale / 100})`, transformOrigin: 'top left' }}>
+                    <div className="flex flex-col items-start relative pl-4">
+                        {/* Accent Line */}
+                        <div className="absolute left-0 top-0 bottom-0 w-2.5" style={{ backgroundColor: '#fff' }}></div>
+
+                        {/* Top Bar */}
+                        <div className="px-6 py-4 min-w-[300px]" style={{ backgroundColor: primaryColor }}>
+                            <h2 className="text-4xl font-bold whitespace-nowrap" style={{ color: textColor }}>{text1}
+                            </h2>
+                        </div>
+
+                        {/* Bottom Bar (Offset) */}
+                        <div className="px-6 py-3 min-w-[350px]" style={{ backgroundColor: secondaryColor }}>
+                            <p className="text-2xl whitespace-nowrap" style={{ color: '#e5e7eb' }}>{text2}</p>
+                        </div>
+                    </div>
+                </div>
+                )}
+
+                {template === 'bug' && (
+                <div className="absolute transition-all duration-200 ease-out" style={{ left: `${posX}%`, top:
+                    `${posY}%`, transform: `scale(${scale / 100}) translate(-50%, 0)`, transformOrigin: 'top center' }}>
+                    <div className="px-8 py-6 rounded-xl shadow-lg flex items-center justify-center min-w-[150px]"
+                        style={{ backgroundColor: primaryColor }}>
+                        <span className="text-2xl font-bold" style={{ color: textColor }}>{text1}</span>
+                    </div>
+                </div>
+                )}
+
+                {template === 'ticker' && (
+                <div className="absolute w-full transition-all duration-200 ease-out" style={{ left: 0, top: `${posY}%`,
+                    transform: `scale(${scale / 100})`, transformOrigin: 'bottom left' }}>
+                    <div className="w-full h-20 flex items-center relative" style={{ backgroundColor: secondaryColor }}>
+                        {/* Label */}
+                        <div className="h-24 -mt-4 px-12 flex items-center bg-blue-600 shadow-lg relative z-10 ml-20"
+                            style={{ backgroundColor: primaryColor }}>
+                            <span className="text-3xl font-bold uppercase" style={{ color: textColor }}>{text1}</span>
+                        </div>
+                        {/* Scrolling text simulation */}
+                        <div className="flex-1 px-8">
+                            <span className="text-2xl uppercase tracking-wide opacity-90">{text2}</span>
+                        </div>
+                    </div>
+                </div>
+                )}
+
+                {template === 'slate' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center transition-all duration-200 ease-out bg-black/80"
+                    style={{ transform: `scale(${scale / 100})`, }}>
+                    <div className="w-48 h-2 mb-8" style={{ backgroundColor: primaryColor }}></div>
+                    <h1 className="text-7xl font-black mb-4 tracking-tight text-center" style={{ color: textColor }}>
+                        {text1}</h1>
+                    <h2 className="text-4xl text-gray-300 font-light text-center">{text2}</h2>
+                </div>
+                )}
+
+            </div>
+        </div>
+
+        {/* Tips Footer */}
+        <div className="mt-6 text-xs text-gray-500 flex gap-6">
+            <span className="flex items-center gap-1">
+                <Icon name="check" size={12} /> 1920x1080 HD Ready
+            </span>
+            <span className="flex items-center gap-1">
+                <Icon name="check" size={12} /> Alpha Channel Support
+            </span>
+            <span className="flex items-center gap-1">
+                <Icon name="check" size={12} /> Works with ATEM Media Pool
+            </span>
+        </div>
+    </div>
+</div>
+);
+};
+
+export default App;
