@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcast Graphics Generator</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; margin: 0; background-color: #f0f0f0; }
+        .app-container { display: flex; height: 100vh; }
+        .sidebar { width: 300px; padding: 20px; background-color: #fff; overflow-y: auto; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
+        .preview-area { width: 100%; max-width: 1280px; aspect-ratio: 16 / 9; background-color: #ccc; position: relative; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .graphic-container { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: top left; }
+        .control-group { margin-bottom: 20px; }
+        .control-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        .control-group input, .control-group select, .control-group button { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; box-sizing: border-box; }
+        .control-group input[type="color"] { padding: 0; height: 38px; }
+        .template-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .template-buttons button, .control-group > button { background-color: #007bff; color: white; border: none; cursor: pointer; transition: background-color 0.2s; }
+        .template-buttons button:hover, .control-group > button:hover { background-color: #0056b3; }
+        .photo-bg { background-image: url(https://via.placeholder.com/1920x1080); background-size: cover; }
+        .chessboard-bg { background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; }
+        .preview-controls { text-align: center; margin-top: 10px; }
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; }
+            .sidebar { width: 100%; height: auto; max-height: 50vh; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const LowerThird = ({ text1, text2, primaryColor, secondaryColor, font }) => (
+            <div style={{ position: 'absolute', bottom: '100px', left: '50px', fontFamily: font }}>
+                <div style={{ backgroundColor: primaryColor, color: '#fff', padding: '10px 20px', fontSize: '36px' }}>{text1}</div>
+                <div style={{ backgroundColor: secondaryColor, color: '#fff', padding: '5px 20px', fontSize: '28px' }}>{text2}</div>
+            </div>
+        );
+
+        const Bug = ({ text1, primaryColor, font }) => (
+            <div style={{ position: 'absolute', top: '20px', right: '20px', fontFamily: font, backgroundColor: primaryColor, color: '#fff', padding: '10px', fontSize: '24px' }}>
+                {text1}
+            </div>
+        );
+
+        const Ticker = ({ text1, primaryColor, secondaryColor, font }) => (
+            <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', display: 'flex', alignItems: 'center', fontFamily: font, backgroundColor: secondaryColor }}>
+                <div style={{ backgroundColor: primaryColor, color: '#fff', padding: '15px', fontSize: '32px', fontWeight: 'bold' }}>BREAKING</div>
+                <div style={{ color: '#fff', padding: '15px', fontSize: '32px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    <div style={{ animation: 'scroll 20s linear infinite' }}>{text1}</div>
+                </div>
+            </div>
+        );
+
+        const Slate = ({ text1, text2, primaryColor, secondaryColor, font }) => (
+            <div style={{ width: '1920px', height: '1080px', backgroundColor: secondaryColor, color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', fontFamily: font }}>
+                <div style={{ fontSize: '72px', padding: '20px', borderBottom: `5px solid ${primaryColor}` }}>{text1}</div>
+                <div style={{ fontSize: '48px', marginTop: '20px' }}>{text2}</div>
+            </div>
+        );
+
+        const App = () => {
+            const [text1, setText1] = React.useState('Jules');
+            const [text2, setText2] = React.useState('Software Engineer');
+            const [primaryColor, setPrimaryColor] = React.useState('#00ff00');
+            const [secondaryColor, setSecondaryColor] = React.useState('#0000ff');
+            const [font, setFont] = React.useState('Inter');
+            const [posX, setPosX] = React.useState(0);
+            const [posY, setPosY] = React.useState(0);
+            const [scale, setScale] = React.useState(100);
+            const [template, setTemplate] = React.useState('lowerThird');
+            const [previewBackground, setPreviewBackground] = React.useState('photo');
+
+            const downloadPng = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 1920;
+                canvas.height = 1080;
+                const ctx = canvas.getContext('2d');
+
+                // Apply global transformations
+                const scaleFactor = scale / 100;
+                const xPos = (canvas.width * (posX / 100));
+                const yPos = (canvas.height * (posY / 100));
+                ctx.save();
+                ctx.translate(xPos, yPos);
+                ctx.scale(scaleFactor, scaleFactor);
+
+                switch (template) {
+                    case 'lowerThird':
+                        ctx.font = `36px ${font}`;
+                        const text1Metrics = ctx.measureText(text1);
+                        const text1Width = text1Metrics.width;
+
+                        ctx.font = `28px ${font}`;
+                        const text2Metrics = ctx.measureText(text2);
+                        const text2Width = text2Metrics.width;
+
+                        const maxWidth = Math.max(text1Width, text2Width);
+
+                        ctx.fillStyle = primaryColor;
+                        ctx.fillRect(50, 900, maxWidth + 40, 50);
+                        ctx.fillStyle = secondaryColor;
+                        ctx.fillRect(50, 950, maxWidth + 40, 40);
+
+                        ctx.fillStyle = '#fff';
+                        ctx.font = `36px ${font}`;
+                        ctx.fillText(text1, 70, 935);
+                        ctx.font = `28px ${font}`;
+                        ctx.fillText(text2, 70, 980);
+                        break;
+                    case 'bug':
+                        ctx.font = `24px ${font}`;
+                        const bugMetrics = ctx.measureText(text1);
+                        const bugWidth = bugMetrics.width;
+
+                        ctx.fillStyle = primaryColor;
+                        ctx.fillRect(1920 - bugWidth - 40, 20, bugWidth + 20, 40);
+
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(text1, 1920 - bugWidth - 30, 50);
+                        break;
+                    case 'ticker':
+                        ctx.fillStyle = secondaryColor;
+                        ctx.fillRect(0, 1000, 1920, 80);
+                        ctx.fillStyle = primaryColor;
+                        ctx.fillRect(0, 1000, 200, 80);
+
+                        ctx.fillStyle = '#fff';
+                        ctx.font = `bold 32px ${font}`;
+                        ctx.fillText('BREAKING', 20, 1050);
+                        ctx.font = `32px ${font}`;
+
+                        // Clip the text to the visible area
+                        ctx.save();
+                        ctx.rect(220, 1000, 1700, 80);
+                        ctx.clip();
+                        ctx.fillText(text1, 240, 1050);
+                        ctx.restore();
+                        break;
+                    case 'slate':
+                        ctx.fillStyle = secondaryColor;
+                        ctx.fillRect(0, 0, 1920, 1080);
+
+                        ctx.fillStyle = '#fff';
+                        ctx.font = `72px ${font}`;
+                        ctx.textAlign = 'center';
+                        ctx.fillText(text1, 960, 500);
+
+                        ctx.fillStyle = primaryColor;
+                        ctx.fillRect(760, 520, 400, 5);
+
+                        ctx.fillStyle = '#fff';
+                        ctx.font = `48px ${font}`;
+                        ctx.fillText(text2, 960, 600);
+                        break;
+                }
+
+                ctx.restore();
+
+                const link = document.createElement('a');
+                link.download = 'graphic.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+
+            const renderTemplate = () => {
+                const props = { text1, text2, primaryColor, secondaryColor, font };
+                switch (template) {
+                    case 'lowerThird': return <LowerThird {...props} />;
+                    case 'bug': return <Bug {...props} />;
+                    case 'ticker': return <Ticker {...props} />;
+                    case 'slate': return <Slate {...props} />;
+                    default: return null;
+                }
+            };
+
+            return (
+                <div className="app-container">
+                    <div className="sidebar">
+                        <h2>Controls</h2>
+                        <div className="control-group">
+                            <label>Text 1:</label>
+                            <input type="text" value={text1} onChange={(e) => setText1(e.target.value)} />
+                        </div>
+                        <div className="control-group">
+                            <label>Text 2:</label>
+                            <input type="text" value={text2} onChange={(e) => setText2(e.target.value)} />
+                        </div>
+                        <div className="control-group">
+                            <label>Primary Color:</label>
+                            <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
+                        </div>
+                        <div className="control-group">
+                            <label>Secondary Color:</label>
+                            <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
+                        </div>
+                        <div className="control-group">
+                            <label>Font:</label>
+                            <select value={font} onChange={(e) => setFont(e.target.value)}>
+                                <option value="Inter">Inter</option>
+                                <option value="Roboto">Roboto</option>
+                                <option value="Oswald">Oswald</option>
+                            </select>
+                        </div>
+                        <div className="control-group">
+                            <label>Position X:</label>
+                            <input type="range" min="0" max="100" value={posX} onChange={(e) => setPosX(e.target.value)} />
+                        </div>
+                        <div className="control-group">
+                            <label>Position Y:</label>
+                            <input type="range" min="0" max="100" value={posY} onChange={(e) => setPosY(e.target.value)} />
+                        </div>
+                        <div className="control-group">
+                            <label>Scale:</label>
+                            <input type="range" min="50" max="200" value={scale} onChange={(e) => setScale(e.target.value)} />
+                        </div>
+                        <div className="control-group">
+                            <label>Template:</label>
+                            <div className="template-buttons">
+                                <button onClick={() => setTemplate('lowerThird')}>Lower Third</button>
+                                <button onClick={() => setTemplate('bug')}>Bug</button>
+                                <button onClick={() => setTemplate('ticker')}>Ticker</button>
+                                <button onClick={() => setTemplate('slate')}>Slate</button>
+                            </div>
+                        </div>
+                        <div className="control-group">
+                            <button onClick={downloadPng}>Download PNG</button>
+                        </div>
+                    </div>
+                    <div className="main-content">
+                        <div className={`preview-area ${previewBackground === 'photo' ? 'photo-bg' : 'chessboard-bg'}`}>
+                            <div className="graphic-container" style={{ transform: `translate(${posX}%, ${posY}%) scale(${scale / 100})` }}>
+                                {renderTemplate()}
+                            </div>
+                        </div>
+                        <div className="preview-controls">
+                            <button onClick={() => setPreviewBackground(bg => bg === 'photo' ? 'chessboard' : 'photo')}>
+                                Toggle Background
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
